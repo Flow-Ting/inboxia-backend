@@ -32,3 +32,5 @@ export class DomainService {
     }
   }
 }
+
+// TODO: Enhance domain verification (SPF, DKIM, DMARC) logic here.

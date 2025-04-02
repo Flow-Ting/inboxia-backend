@@ -1,8 +1,9 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import "reflect-metadata";
+import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @Column()
@@ -14,6 +15,6 @@ export class User {
   @Column()
   password: string;
 
-  @Column({ default: 'user' })
+  @Column({ default: "user" })
   role: string;
 }
