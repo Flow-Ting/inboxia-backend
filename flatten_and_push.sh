@@ -1,47 +1,48 @@
 #!/bin/bash
 # ------------------------------------------------------------------------------
-# Flatten and Push Script for Flow-Ting's Inboxia Backend
+# Comprehensive Flattening Script for Inboxia Backend
 #
-# This script:
-# 1. Recursively finds and flattens nested "inboxia-backend" directories (excluding the outermost).
-# 2. Sets the remote URL to Flow-Ting's repository.
-# 3. Stages all files, commits with a message, and pushes the changes.
+# This script recursively flattens nested directories named "inboxia-backend"
+# so that all project files are in one unified folder. It then stages, commits,
+# and pushes the changes to the GitHub repository.
 #
+# WARNING: Ensure you have a backup before running this script.
 # Repository: git@github.com:Flow-Ting/inboxia-backend.git
 # ------------------------------------------------------------------------------
  
-# Step 1: Flatten nested "inboxia-backend" directories
-echo "Flattening nested directories..."
-# This finds any directory named "inboxia-backend" that is at least two levels deep
-find . -type d -name "inboxia-backend" -mindepth 2 -exec sh -c '
-for d; do
-  echo "Flattening: $d"
-  parent=$(dirname "$d")
-  # Move all files from the nested folder to its parent; ignore errors if files exist
-  mv "$d"/* "$parent"/ 2>/dev/null
-  # Remove the empty directory
-  rmdir "$d" 2>/dev/null
+echo "Starting recursive flattening of nested 'inboxia-backend' directories..."
+
+# Store the current directory (should be the outermost project folder)
+ROOT_DIR=$(pwd)
+
+# Find all directories named "inboxia-backend" that are not the root directory
+find . -mindepth 2 -type d -name "inboxia-backend" | while read -r nestedDir; do
+  echo "Processing nested directory: $nestedDir"
+  # Move all files (and subdirectories) from the nested directory to its parent directory
+  mv "$nestedDir"/* "$(dirname "$nestedDir")"/
+  # Attempt to remove the nested directory if empty
+  if rmdir "$nestedDir" 2>/dev/null; then
+    echo "Removed empty directory: $nestedDir"
+  else
+    echo "Directory not empty or removal failed: $nestedDir"
+  fi
 done
-' sh {} +
 
-# Step 2: Set the Git remote URL to Flow-Ting's repository
-echo "Setting remote to Flow-Ting's repository..."
-git remote set-url origin git@github.com:Flow-Ting/inboxia-backend.git
+echo "Flattening complete. Final structure:"
+find . -type d -name "inboxia-backend"
 
-# Step 3: Stage all files in the repository
-echo "Staging all files..."
+echo "Staging all changes..."
 git add --all
 
-# Step 4: Commit the changes
-read -p "Enter commit message (or press Enter for default): " commitMessage
-if [ -z "$commitMessage" ]; then
-  commitMessage="Flattened repository structure and updated all files via automation script"
+read -p "Enter commit message (or press Enter for default): " commitMsg
+if [ -z "$commitMsg" ]; then
+  commitMsg="Flattened repository structure via automation script"
 fi
-echo "Committing changes..."
-git commit -m "$commitMessage"
 
-# Step 5: Push changes to GitHub
-echo "Pushing changes to Flow-Ting's repository..."
+echo "Committing changes..."
+git commit -m "$commitMsg"
+
+echo "Pushing changes to Flow-Ting's GitHub repository..."
 git push -u origin main
 
-echo "Flatten and push process complete. Your entire repository has been updated on GitHub."
+echo "Flattening and push process complete. Your entire repository has been updated on GitHub."
