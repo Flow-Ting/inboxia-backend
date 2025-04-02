@@ -4,9 +4,9 @@
 #
 # This script automates:
 # 1. Setting the remote URL to Flow-Ting's repository.
-# 2. Staging all files (from all nested layers).
+# 2. Staging all files in the complete repository.
 # 3. Committing changes with a provided commit message.
-# 4. Pushing the commit to the main branch.
+# 4. Pushing the changes to the main branch.
 #
 # Repository: git@github.com:Flow-Ting/inboxia-backend.git
 # ------------------------------------------------------------------------------
