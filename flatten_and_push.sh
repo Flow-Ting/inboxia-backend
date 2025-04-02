@@ -1,48 +1,61 @@
 #!/bin/bash
 # ------------------------------------------------------------------------------
-# Comprehensive Flattening Script for Inboxia Backend
+# Comprehensive Flatten and Preserve Script for Flow-Ting's Inboxia Backend
 #
-# This script recursively flattens nested directories named "inboxia-backend"
-# so that all project files are in one unified folder. It then stages, commits,
-# and pushes the changes to the GitHub repository.
+# This script renames nested "inboxia-backend" directories so that all three
+# layers of your project are preserved as distinct folders. It then stages,
+# commits, and pushes these changes to your GitHub repository.
 #
-# WARNING: Ensure you have a backup before running this script.
 # Repository: git@github.com:Flow-Ting/inboxia-backend.git
 # ------------------------------------------------------------------------------
  
-echo "Starting recursive flattening of nested 'inboxia-backend' directories..."
+echo "Navigating to the outermost repository folder..."
+cd ~/inboxia-backend || { echo "Folder ~/inboxia-backend not found!"; exit 1; }
 
-# Store the current directory (should be the outermost project folder)
-ROOT_DIR=$(pwd)
+# The expected structure is:
+# ~/inboxia-backend/
+# └── inboxia-backend/          <-- Outer layer
+#     └── inboxia-backend/      <-- Middle layer
+#         └── inboxia-backend/  <-- Innermost layer
+#
+# We want to rename the middle and innermost layers to preserve them.
 
-# Find all directories named "inboxia-backend" that are not the root directory
-find . -mindepth 2 -type d -name "inboxia-backend" | while read -r nestedDir; do
-  echo "Processing nested directory: $nestedDir"
-  # Move all files (and subdirectories) from the nested directory to its parent directory
-  mv "$nestedDir"/* "$(dirname "$nestedDir")"/
-  # Attempt to remove the nested directory if empty
-  if rmdir "$nestedDir" 2>/dev/null; then
-    echo "Removed empty directory: $nestedDir"
-  else
-    echo "Directory not empty or removal failed: $nestedDir"
-  fi
-done
+echo "Checking for nested 'inboxia-backend' directories..."
 
-echo "Flattening complete. Final structure:"
-find . -type d -name "inboxia-backend"
+# Rename the second layer if it exists
+if [ -d "inboxia-backend/inboxia-backend" ]; then
+  echo "Found second layer directory. Renaming 'inboxia-backend/inboxia-backend' to 'inboxia-backend-2'..."
+  mv inboxia-backend/inboxia-backend inboxia-backend-2
+else
+  echo "Second layer directory not found."
+fi
+
+# Rename the third layer if it exists inside the renamed second layer
+if [ -d "inboxia-backend-2/inboxia-backend" ]; then
+  echo "Found third layer directory. Renaming 'inboxia-backend-2/inboxia-backend' to 'inboxia-backend-3'..."
+  mv inboxia-backend-2/inboxia-backend inboxia-backend-3
+else
+  echo "Third layer directory not found."
+fi
+
+echo "Flattening complete. Final directory structure:"
+find . -maxdepth 2 -type d -name "inboxia-backend*"
 
 echo "Staging all changes..."
 git add --all
 
-read -p "Enter commit message (or press Enter for default): " commitMsg
-if [ -z "$commitMsg" ]; then
-  commitMsg="Flattened repository structure via automation script"
+read -p "Enter commit message (or press Enter for default): " commitMessage
+if [ -z "$commitMessage" ]; then
+  commitMessage="Renamed nested directories to preserve all layers"
 fi
 
 echo "Committing changes..."
-git commit -m "$commitMsg"
+git commit -m "$commitMessage"
 
-echo "Pushing changes to Flow-Ting's GitHub repository..."
+echo "Setting remote to Flow-Ting's repository..."
+git remote set-url origin git@github.com:Flow-Ting/inboxia-backend.git
+
+echo "Pushing changes to GitHub..."
 git push -u origin main
 
-echo "Flattening and push process complete. Your entire repository has been updated on GitHub."
+echo "Process complete. Your repository now contains all three layers as distinct folders on GitHub."
