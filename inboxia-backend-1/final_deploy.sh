@@ -1,23 +1,31 @@
 #!/bin/bash
 # ------------------------------------------------------------------------------
-# Final Production Deployment Script for Inboxia Backend
+# Final Production Deployment Script for Inboxia Backend (NodeNext ESM)
 #
-# This script automates:
-# 1. Pulling the latest code from GitHub.
-# 2. Installing dependencies.
-# 3. Clearing caches and build artifacts.
-# 4. Running the automated test suite.
-# 5. Ensuring src/data-source.ts exists (creating it if missing).
-# 6. Running database migrations (using ts-node with reflect-metadata preloaded).
-# 7. Building the project (transpiling TypeScript to JavaScript).
-# 8. Building a production Docker image (optional).
-# 9. Starting the production server.
+# This script performs the following steps:
+# 1. Pulls the latest code from GitHub.
+# 2. Installs dependencies.
+# 3. Clears caches and old build artifacts.
+# 4. Runs the automated test suite.
+# 5. Runs database migrations using a custom migration runner.
+# 6. Builds the project (transpiles TypeScript to JavaScript).
+# 7. Optionally builds a production Docker image.
+# 8. Starts the production server.
 #
-# Ensure your tsconfig.json includes:
-#   "skipLibCheck": true,
-#   "esModuleInterop": true,
-#   "emitDecoratorMetadata": true,
-#   "experimentalDecorators": true
+# Prerequisites:
+# - package.json must include "type": "module".
+# - tsconfig.json must be updated to include:
+#       "module": "NodeNext",
+#       "moduleResolution": "node",
+#       "experimentalDecorators": true,
+#       "emitDecoratorMetadata": true,
+#       "esModuleInterop": true,
+#       "skipLibCheck": true,
+#       "target": "es2017",
+#       "outDir": "./dist",
+#       "types": ["node", "jest"]
+# - A .env file exists with your DATABASE_URL (e.g., postgres://inboxia:Kazpyr99!@localhost:5432/inboxia)
+# - The custom migration script is named "run_migration_custom.ts" and is located in the project root.
 #
 # ------------------------------------------------------------------------------
  
@@ -27,8 +35,10 @@ git pull origin main
 echo "Installing dependencies..."
 npm install
 
-echo "Clearing caches and build artifacts..."
+echo "Clearing caches and old build artifacts..."
 rm -rf dist node_modules/.cache .tscache
+find src -type f -name "*.js" -delete
+find src -type f -name "*.js.map" -delete
 
 echo "Running tests..."
 npx jest --clearCache
@@ -38,34 +48,10 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo "Checking for src/data-source.ts file..."
-if [ ! -f "src/data-source.ts" ]; then
-  echo "src/data-source.ts not found. Creating file..."
-  cat > src/data-source.ts << 'EOF'
-import "reflect-metadata";
-import { DataSource } from "typeorm";
-import { User } from "./auth/user.entity";
-import { Domain } from "./domain/domain.entity";
-import { EmailMetric } from "./email/email.entity";
-
-export const AppDataSource = new DataSource({
-  type: "postgres",
-  url: process.env.DATABASE_URL,
-  synchronize: false,
-  logging: false,
-  entities: [User, Domain, EmailMetric],
-  migrations: ["dist/migrations/*.js"],
-  subscribers: [],
-});
-EOF
-else
-  echo "src/data-source.ts already exists."
-fi
-
-echo "Running database migrations..."
-npx ts-node --files -r ts-node/register -r reflect-metadata ./node_modules/typeorm/cli.js migration:run --dataSource src/data-source.ts
+echo "Running custom database migrations..."
+npx ts-node -r reflect-metadata run_migration_custom.ts
 if [ $? -ne 0 ]; then
-  echo "Migrations failed. Please review your database configuration and entity files."
+  echo "Migrations failed. Please review your DATABASE_URL and entity files."
   exit 1
 fi
 
@@ -77,14 +63,18 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Building production Docker image (optional)..."
-docker build -t inboxia-backend:latest .
-if [ $? -ne 0 ]; then
-  echo "Docker build failed. Please check your Dockerfile and environment."
-  exit 1
+if command -v docker >/dev/null 2>&1; then
+  docker build -t inboxia-backend:latest .
+  if [ $? -ne 0 ]; then
+    echo "Docker build failed. Please check your Dockerfile and environment."
+    exit 1
+  fi
+else
+  echo "Docker not found; skipping Docker build."
 fi
 
 echo "Starting production server..."
 node dist/main.js
 
-echo "Production deployment complete."
+echo "Production deployment complete. Your server is now running."
 echo "Domain Verification endpoint is available at: http://localhost:3000/domain-verification/inboxia.me"
